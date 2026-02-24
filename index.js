@@ -1,5 +1,5 @@
 const { Client, GatewayIntentBits } = require("discord.js");
-const { joinVoiceChannel, createAudioPlayer, createAudioResource } = require("@discordjs/voice");
+const { joinVoiceChannel, createAudioPlayer, createAudioResource, StreamType } = require("@discordjs/voice");
 const ytdl = require("@distube/ytdl-core");
 
 const client = new Client({
@@ -11,47 +11,42 @@ const client = new Client({
   ]
 });
 
-client.on("ready", () => {
-  console.log("Music bot online!");
+client.once("ready", () => {
+  console.log("Bot online!");
 });
 
 client.on("messageCreate", async (msg) => {
   if (!msg.guild) return;
+  if (!msg.content.startsWith("!play")) return;
 
-  if (msg.content.startsWith("!play")) {
-    const url = msg.content.split(" ").slice(1).join(" ");
+  const url = msg.content.split(" ").slice(1).join(" ");
+  if (!url) return msg.reply("YouTube link daal.");
+  if (!msg.member.voice.channel) return msg.reply("VC join kar pehle.");
 
-    if (!url) return msg.reply("YouTube link daal bhai 😅");
-    if (!msg.member.voice.channel) return msg.reply("Pehle VC join kar!");
+  try {
+    const stream = ytdl(url, {
+      filter: "audioonly",
+      quality: "highestaudio",
+      highWaterMark: 1 << 25
+    });
 
-    if (!ytdl.validateURL(url)) {
-      return msg.reply("❌ Sirf YouTube link kaam karega (abhi).");
-    }
+    const connection = joinVoiceChannel({
+      channelId: msg.member.voice.channel.id,
+      guildId: msg.guild.id,
+      adapterCreator: msg.guild.voiceAdapterCreator
+    });
 
-    try {
-      const stream = ytdl(url, {
-        filter: "audioonly",
-        quality: "highestaudio",
-        highWaterMark: 1 << 25
-      });
+    const player = createAudioPlayer();
+    const resource = createAudioResource(stream, { inputType: StreamType.Arbitrary });
 
-      const connection = joinVoiceChannel({
-        channelId: msg.member.voice.channel.id,
-        guildId: msg.guild.id,
-        adapterCreator: msg.guild.voiceAdapterCreator
-      });
+    player.play(resource);
+    connection.subscribe(player);
 
-      const player = createAudioPlayer();
-      const resource = createAudioResource(stream);
+    msg.reply("🎵 Gaana baj raha hai!");
 
-      player.play(resource);
-      connection.subscribe(player);
-
-      msg.reply("🎵 Gaana baj raha hai!");
-    } catch (err) {
-      console.log(err);
-      msg.reply("❌ Link se gaana nahi baja paaya.");
-    }
+  } catch (e) {
+    console.error(e);
+    msg.reply("❌ Song play nahi hua.");
   }
 });
 
