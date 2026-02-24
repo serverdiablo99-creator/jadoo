@@ -1,6 +1,6 @@
 const { Client, GatewayIntentBits } = require("discord.js");
 const { joinVoiceChannel, createAudioPlayer, createAudioResource } = require("@discordjs/voice");
-const play = require("play-dl");
+const ytdl = require("@distube/ytdl-core");
 
 const client = new Client({
   intents: [
@@ -19,24 +19,21 @@ client.on("messageCreate", async (msg) => {
   if (!msg.guild) return;
 
   if (msg.content.startsWith("!play")) {
-    const query = msg.content.split(" ").slice(1).join(" ");
+    const url = msg.content.split(" ").slice(1).join(" ");
 
-    if (!query) return msg.reply("Song name ya link daal bhai 😅");
+    if (!url) return msg.reply("YouTube link daal bhai 😅");
     if (!msg.member.voice.channel) return msg.reply("Pehle VC join kar!");
 
+    if (!ytdl.validateURL(url)) {
+      return msg.reply("❌ Sirf YouTube link kaam karega (abhi).");
+    }
+
     try {
-      let stream;
-
-      // agar YouTube link hai
-      if (play.yt_validate(query) === "video") {
-        stream = await play.stream(query);
-      } else {
-        // warna search karke first result chalao
-        const results = await play.search(query, { limit: 1 });
-        if (!results.length) return msg.reply("❌ Gaana nahi mila");
-
-        stream = await play.stream(results[0].url);
-      }
+      const stream = ytdl(url, {
+        filter: "audioonly",
+        quality: "highestaudio",
+        highWaterMark: 1 << 25
+      });
 
       const connection = joinVoiceChannel({
         channelId: msg.member.voice.channel.id,
@@ -45,7 +42,7 @@ client.on("messageCreate", async (msg) => {
       });
 
       const player = createAudioPlayer();
-      const resource = createAudioResource(stream.stream, { inputType: stream.type });
+      const resource = createAudioResource(stream);
 
       player.play(resource);
       connection.subscribe(player);
@@ -53,7 +50,7 @@ client.on("messageCreate", async (msg) => {
       msg.reply("🎵 Gaana baj raha hai!");
     } catch (err) {
       console.log(err);
-      msg.reply("❌ Song play nahi ho paaya, doosra try kar.");
+      msg.reply("❌ Link se gaana nahi baja paaya.");
     }
   }
 });
