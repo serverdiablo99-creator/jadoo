@@ -9,6 +9,6 @@
   "dependencies": {
     "discord.js": "^14.14.1",
     "@discordjs/voice": "^0.16.0",
-    "play-dl": "^1.9.7"
+    "@distube/ytdl-core": "^4.11.5"
   }
 }
